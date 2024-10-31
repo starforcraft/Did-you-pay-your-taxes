@@ -1,0 +1,13 @@
+{
+  "itemGroup.taxes": "Did you pay your taxes?",
+  "entity.taxes.irs": "IRS",
+  "entity.taxes.rocket": "Rocket",
+  "item.taxes.irs_spawn_egg": "IRS Spawn Egg",
+  "item.taxes.rocket_spawn_egg": "Rocket Spawn Egg",
+  "key.taxes.open_taxes_menu": "Open taxes menu",
+  "gui.taxes.mining_tax": "Mining Tax",
+  "gui.taxes.smelting_tax": "Smelting Tax",
+  "gui.taxes.trading_tax": "Trading Tax",
+  "gui.taxes.days_left": "days left",
+  "gui.taxes.day_left": "day left"
+}
