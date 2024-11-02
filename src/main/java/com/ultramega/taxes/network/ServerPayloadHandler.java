@@ -17,14 +17,4 @@ public class ServerPayloadHandler {
             }
         }).exceptionally(e -> null);
     }
-
-    public static void updateTaxSlotsData(final UpdateTaxSlotsData data, final IPayloadContext context) {
-        context.enqueueWork(() -> {
-            if (context.player() instanceof ServerPlayer serverPlayer) {
-                if (serverPlayer.containerMenu instanceof TaxContainerMenu containerMenu) {
-                    containerMenu.placeCarriedInTaxSlot(data.slotIndex());
-                }
-            }
-        }).exceptionally(e -> null);
-    }
 }

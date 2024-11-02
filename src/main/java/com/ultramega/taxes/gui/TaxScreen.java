@@ -1,9 +1,9 @@
 package com.ultramega.taxes.gui;
 
+import com.mojang.blaze3d.vertex.PoseStack;
 import com.ultramega.taxes.TaxTypes;
 import com.ultramega.taxes.Taxes;
 import com.ultramega.taxes.container.TaxContainerMenu;
-import com.ultramega.taxes.network.UpdateTaxSlotsData;
 import com.ultramega.taxes.registry.ModAttachments;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -13,23 +13,27 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.LinkedHashMap;
 
 public class TaxScreen extends AbstractContainerScreen<TaxContainerMenu> {
     private static final ResourceLocation BACKGROUND = ResourceLocation.fromNamespaceAndPath(Taxes.MODID, "textures/gui/tax_screen.png");
     private static final ResourceLocation SCROLLER_SPRITE = ResourceLocation.withDefaultNamespace("container/stonecutter/scroller");
+    private static final ResourceLocation SCROLLER_DISABLED_SPRITE = ResourceLocation.withDefaultNamespace("container/stonecutter/scroller_disabled");
 
     private static final int SCROLLER_WIDTH = 12;
     private static final int SCROLLER_HEIGHT = 15;
-    private static final int SCROLLER_FULL_HEIGHT = 95;
+    private static final int SCROLLER_FULL_HEIGHT = 80;
 
-    public static final int BAR_WIDTH = 72;
-    public static final int BAR_HEIGHT = 20;
+    private static final int TAX_LENGTH = 6;
+    private static final int TAX_HEIGHT = 4;
+    private static final int TAX_AMOUNT = TAX_LENGTH * TAX_HEIGHT;
+
+    public static final int BAR_SIZE = 20;
+
+    private LinkedHashMap<String, Integer> selectedTax;
 
     private final TaxContainerMenu containerMenu;
     private final Player player;
@@ -37,13 +41,17 @@ public class TaxScreen extends AbstractContainerScreen<TaxContainerMenu> {
     private float scrollOffs;
     private boolean scrolling;
 
-    public TaxScreen(TaxContainerMenu containerMenu, Inventory inventory, Component component) {
-        super(containerMenu, inventory, Component.empty());
-        this.containerMenu = containerMenu;
-        this.player = containerMenu.getPlayer();
+    private int startIndex;
+
+    public TaxScreen(TaxContainerMenu menu, Inventory inventory, Component component) {
+        super(menu, inventory, Component.empty());
+        this.menu.registerUpdateListener(this::containerChanged);
+        this.selectedTax = menu.getSelectedTaxDataIntCopy();
+        this.containerMenu = menu;
+        this.player = menu.getPlayer();
         this.imageWidth = 176;
-        this.imageHeight = 208;
-        this.inventoryLabelY = this.imageHeight - 94;
+        this.imageHeight = 193;
+        this.inventoryLabelY = this.imageHeight - 93;
     }
 
     @Override
@@ -53,32 +61,39 @@ public class TaxScreen extends AbstractContainerScreen<TaxContainerMenu> {
         assert this.minecraft != null;
 
         this.addRenderableWidget(new SideButton(Items.DIAMOND_PICKAXE.getDefaultInstance(), TaxTypes.MINING_TAX, leftPos - 20, topPos + 5, (context) -> {
-            scrollOffs = 0.0F;
             containerMenu.setSelectedTaxType(TaxTypes.MINING_TAX);
+            selectedTax = containerMenu.getSelectedTaxDataIntCopy();
+            this.containerChanged();
         }));
         this.addRenderableWidget(new SideButton(Items.FURNACE.getDefaultInstance(), TaxTypes.SMELTING_TAX, leftPos - 20, topPos + 5 + 20, (context) -> {
-            scrollOffs = 0.0F;
             containerMenu.setSelectedTaxType(TaxTypes.SMELTING_TAX);
+            selectedTax = containerMenu.getSelectedTaxDataIntCopy();
+            this.containerChanged();
         }));
         this.addRenderableWidget(new SideButton(Items.EMERALD.getDefaultInstance(), TaxTypes.TRADING_TAX, leftPos - 20, topPos + 5 + 40, (context) -> {
-            scrollOffs = 0.0F;
             containerMenu.setSelectedTaxType(TaxTypes.TRADING_TAX);
+            selectedTax = containerMenu.getSelectedTaxDataIntCopy();
+            this.containerChanged();
         }));
     }
 
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         super.render(guiGraphics, mouseX, mouseY, partialTick);
-        super.renderTooltip(guiGraphics, mouseX, mouseY);
+        this.renderTooltip(guiGraphics, mouseX, mouseY);
     }
 
     @Override
     protected void renderBg(GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
         graphics.blit(BACKGROUND, getGuiLeft(), getGuiTop(), 0, 0, getXSize(), getYSize());
 
-        graphics.blitSprite(SCROLLER_SPRITE, leftPos + 156, topPos + SCROLLER_HEIGHT + 1 + (int)(80.0F * this.scrollOffs), SCROLLER_WIDTH, SCROLLER_HEIGHT);
+        graphics.blitSprite(isScrollBarActive() ? SCROLLER_SPRITE : SCROLLER_DISABLED_SPRITE, leftPos + 132, topPos + SCROLLER_HEIGHT + 1 + (int)((SCROLLER_FULL_HEIGHT - SCROLLER_HEIGHT) * this.scrollOffs), SCROLLER_WIDTH, SCROLLER_HEIGHT);
 
-        renderTaxes(graphics, containerMenu.getSelectedTaxData(), mouseX, mouseY);
+        int xStart = this.leftPos + 8;
+        int yStart = this.topPos + 14;
+        int maxIndex = this.startIndex + TAX_AMOUNT;
+        renderTaxButtons(graphics, mouseX, mouseY, xStart, yStart, maxIndex);
+        renderTaxItems(graphics, xStart, yStart, maxIndex);
     }
 
     @Override
@@ -94,55 +109,59 @@ public class TaxScreen extends AbstractContainerScreen<TaxContainerMenu> {
         graphics.drawString(this.font, daysLeftText, titleLabelX + 100, titleLabelY, 4210752, false);
     }
 
-    private void renderTaxes(GuiGraphics graphics, LinkedHashMap<String, Double> tax, int mouseX, int mouseY) {
-        int yOffset = 0;
-        int xOffset = 0;
+    @Override
+    protected void renderTooltip(GuiGraphics guiGraphics, int x, int y) {
+        super.renderTooltip(guiGraphics, x, y);
+        int xStart = this.leftPos + 8;
+        int yStart = this.topPos + 14;
+        int maxIndex = this.startIndex + TAX_AMOUNT;
 
-        graphics.enableScissor(getGuiLeft(), getGuiTop() + 16, getGuiLeft() + width, getGuiTop() + 111);
-
-        for (String itemId : tax.keySet()) {
-            int amount = tax.get(itemId).intValue();
-
-            if (amount <= 0) {
-                continue;
-            }
-
-            int x = getGuiLeft() + 8 + xOffset;
-            int y = getGuiTop() + 16 + (BAR_HEIGHT * yOffset) - (int)(80.0F * this.scrollOffs);
-
-            boolean isHovering = mouseX >= x && mouseY >= y && mouseX < x + BAR_WIDTH && mouseY < y + BAR_HEIGHT;
-
-            graphics.blit(BACKGROUND, x, y, 176, isHovering ? BAR_HEIGHT : 0, BAR_WIDTH, BAR_HEIGHT);
-            graphics.renderItem(new ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId))), x + 2, y + 2);
-            graphics.blit(BACKGROUND, x + 53, y + 1, 7, 125, 18, 18);
-            graphics.drawString(this.font, String.valueOf(amount), x + BAR_HEIGHT, y + 10, 16777215, true);
-
-            if (xOffset == 0) {
-                xOffset = BAR_WIDTH;
-            } else {
-                xOffset = 0;
-                yOffset++;
+        for (int i = this.startIndex; i < maxIndex && i < selectedTax.size(); i++) {
+            int currentIndex = i - this.startIndex;
+            int barX = xStart + currentIndex % TAX_LENGTH * BAR_SIZE;
+            int barY = yStart + currentIndex / TAX_LENGTH * BAR_SIZE + 3;
+            if (x >= barX && x < barX + BAR_SIZE && y >= barY && y < barY + BAR_SIZE) {
+                String itemId = selectedTax.keySet().toArray()[i].toString();
+                ItemStack stack = new ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId)));
+                guiGraphics.renderTooltip(this.font, stack, x, y);
             }
         }
-
-        graphics.disableScissor();
     }
 
-    @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        Slot slot = findSlot(mouseX, mouseY);
-        if (slot != null && slot.index >= 36) {
-            containerMenu.placeCarriedInTaxSlot(slot.index);
-            PacketDistributor.sendToServer(new UpdateTaxSlotsData(slot.index));
-            return true;
+    private void renderTaxButtons(GuiGraphics graphics, int mouseX, int mouseY, int x, int y, int lastVisibleElementIndex) {
+        for (int i = this.startIndex; i < lastVisibleElementIndex && i < selectedTax.size(); i++) {
+            int currentIndex = i - this.startIndex;
+            int barX = x + currentIndex % TAX_LENGTH * BAR_SIZE;
+            int barY = y + (currentIndex / TAX_LENGTH) * BAR_SIZE + 3;
+
+            boolean isHovering = mouseX >= barX && mouseY >= barY && mouseX < barX + BAR_SIZE && mouseY < barY + BAR_SIZE;
+            graphics.blit(BACKGROUND, barX, barY - 1, 176, isHovering ? BAR_SIZE : 0, BAR_SIZE, BAR_SIZE);
         }
-        return super.mouseReleased(mouseX, mouseY, button);
+    }
+
+    private void renderTaxItems(GuiGraphics graphics, int x, int y, int startIndex) {
+        PoseStack pose = graphics.pose();
+
+        for (int i = this.startIndex; i < startIndex && i < selectedTax.size(); i++) {
+            int currentIndex = i - this.startIndex;
+            int barX = x + currentIndex % TAX_LENGTH * BAR_SIZE + 2;
+            int barY = y + (currentIndex / TAX_LENGTH) * BAR_SIZE + 4;
+
+            String itemId = selectedTax.keySet().toArray()[i].toString();
+            String amount = String.valueOf(selectedTax.get(itemId));
+
+            graphics.renderItem(new ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId))), barX, barY);
+            pose.pushPose();
+            pose.translate(0, 0, 399.0F);
+            graphics.drawString(this.font, amount, barX + 17 - font.width(amount), barY + 9, 16777215, true);
+            pose.popPose();
+        }
     }
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         this.scrolling = false;
-        int x = this.leftPos + 156;
+        int x = this.leftPos + 132;
         int y = this.topPos + 9;
         if (mouseX >= (double)x && mouseX < (double)(x + 12) && mouseY >= (double)y && mouseY < (double)(y + SCROLLER_FULL_HEIGHT + 8)) {
             this.scrolling = true;
@@ -153,11 +172,11 @@ public class TaxScreen extends AbstractContainerScreen<TaxContainerMenu> {
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
-        if (this.scrolling) {
-            int i = this.topPos + 14;
-            this.scrollOffs = ((float)mouseY - (float)i - 7.5F) / ((float)((i + SCROLLER_FULL_HEIGHT) - i) - 15.0F);
+        if (this.scrolling && isScrollBarActive()) {
+            int yStart = this.topPos + 14;
+            this.scrollOffs = ((float)mouseY - (float)yStart - 7.5F) / ((float)((yStart + SCROLLER_FULL_HEIGHT) - yStart) - 16.0F);
             this.scrollOffs = Mth.clamp(this.scrollOffs, 0.0F, 1.0F);
-            containerMenu.updateTaxSlotsPos((int)(80.0F * this.scrollOffs));
+            this.startIndex = (int)((double)(this.scrollOffs * (float)this.getOffscreenRows()) + 0.5) * TAX_LENGTH;
             return true;
         } else {
             return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
@@ -165,7 +184,27 @@ public class TaxScreen extends AbstractContainerScreen<TaxContainerMenu> {
     }
 
     @Override
-    public boolean isPauseScreen() {
-        return false;
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (this.isScrollBarActive()) {
+            int offscreenRows = this.getOffscreenRows();
+            float scrollIncrement = (float)scrollY / (float)offscreenRows;
+            this.scrollOffs = Mth.clamp(this.scrollOffs - scrollIncrement, 0.0F, 1.0F);
+            this.startIndex = (int)((double)(this.scrollOffs * (float)offscreenRows) + 0.5) * TAX_LENGTH;
+        }
+
+        return true;
+    }
+
+    private boolean isScrollBarActive() {
+        return selectedTax.size() > TAX_AMOUNT;
+    }
+
+    protected int getOffscreenRows() {
+        return (selectedTax.size() + TAX_LENGTH - 1) / TAX_LENGTH - TAX_HEIGHT;
+    }
+
+    private void containerChanged() {
+        this.scrollOffs = 0.0F;
+        this.startIndex = 0;
     }
 }

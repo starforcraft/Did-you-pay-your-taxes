@@ -41,10 +41,9 @@ public class TaxEvent {
                     .withParameter(LootContextParams.TOOL, player.getMainHandItem());
 
             List<ItemStack> drops = event.getState().getDrops(builder);
-            if (!drops.isEmpty() && !drops.getFirst().isEmpty()) {
-                Item item = drops.getFirst().getItem();
 
-                sendTax(player, item, 1, TaxTypes.MINING_TAX);
+            for (ItemStack drop : drops) {
+                sendTax(player, drop.getItem(), drop.getCount(), TaxTypes.MINING_TAX);
             }
         }
     }
