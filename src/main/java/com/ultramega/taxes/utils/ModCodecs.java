@@ -4,16 +4,10 @@ import com.mojang.serialization.Codec;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.util.Mth;
-import net.minecraft.util.RandomSource;
 
 import java.util.LinkedHashMap;
 
-public class ModMaths {
-    public static float randomOffset(RandomSource random, float range) {
-        return Mth.nextFloat(random, -range, range);
-    }
-
+public class ModCodecs {
     public static final Codec<LinkedHashMap<String, Double>> CODEC = Codec.unboundedMap(Codec.STRING, Codec.DOUBLE)
             .xmap(LinkedHashMap::new, map -> map);
 

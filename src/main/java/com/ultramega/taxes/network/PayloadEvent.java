@@ -16,6 +16,11 @@ public class PayloadEvent {
                 OpenTaxMenuData.STREAM_CODEC,
                 ServerPayloadHandler::openTaxMenuData
         );
+        registrar.playToServer(
+                SetSelectedTaxData.TYPE,
+                SetSelectedTaxData.STREAM_CODEC,
+                ServerPayloadHandler::setSelectedTaxData
+        );
         registrar.playBidirectional(
                 AddTaxData.TYPE,
                 AddTaxData.STREAM_CODEC,

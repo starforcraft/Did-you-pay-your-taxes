@@ -184,17 +184,17 @@ public class TaxContainerMenu extends AbstractContainerMenu {
     }
 
     private LinkedHashMap<String, Integer> transformTax(LinkedHashMap<String, Double> tax) {
-        LinkedHashMap<String, Integer> retTax = new LinkedHashMap<>();
+        LinkedHashMap<String, Integer> intTax = new LinkedHashMap<>();
 
         for (Map.Entry<String, Double> entry : tax.entrySet()) {
             int amount = entry.getValue().intValue();
 
             if (amount > 0) {
-                retTax.put(entry.getKey(), amount);
+                intTax.put(entry.getKey(), amount);
             }
         }
 
-        return retTax;
+        return intTax;
     }
 
     @Override

@@ -17,4 +17,12 @@ public class ServerPayloadHandler {
             }
         }).exceptionally(e -> null);
     }
+
+    public static void setSelectedTaxData(final SetSelectedTaxData data, final IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (context.player().containerMenu instanceof TaxContainerMenu menu) {
+                menu.setSelectedTaxType(data.taxType());
+            }
+        }).exceptionally(e -> null);
+    }
 }

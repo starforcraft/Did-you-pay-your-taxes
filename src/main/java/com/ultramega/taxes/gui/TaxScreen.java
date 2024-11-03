@@ -4,6 +4,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.ultramega.taxes.TaxTypes;
 import com.ultramega.taxes.Taxes;
 import com.ultramega.taxes.container.TaxContainerMenu;
+import com.ultramega.taxes.network.SetSelectedTaxData;
 import com.ultramega.taxes.registry.ModAttachments;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -15,6 +16,7 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.LinkedHashMap;
 
@@ -60,21 +62,20 @@ public class TaxScreen extends AbstractContainerScreen<TaxContainerMenu> {
 
         assert this.minecraft != null;
 
-        this.addRenderableWidget(new SideButton(Items.DIAMOND_PICKAXE.getDefaultInstance(), TaxTypes.MINING_TAX, leftPos - 20, topPos + 5, (context) -> {
-            containerMenu.setSelectedTaxType(TaxTypes.MINING_TAX);
-            selectedTax = containerMenu.getSelectedTaxDataIntCopy();
-            this.containerChanged();
-        }));
-        this.addRenderableWidget(new SideButton(Items.FURNACE.getDefaultInstance(), TaxTypes.SMELTING_TAX, leftPos - 20, topPos + 5 + 20, (context) -> {
-            containerMenu.setSelectedTaxType(TaxTypes.SMELTING_TAX);
-            selectedTax = containerMenu.getSelectedTaxDataIntCopy();
-            this.containerChanged();
-        }));
-        this.addRenderableWidget(new SideButton(Items.EMERALD.getDefaultInstance(), TaxTypes.TRADING_TAX, leftPos - 20, topPos + 5 + 40, (context) -> {
-            containerMenu.setSelectedTaxType(TaxTypes.TRADING_TAX);
-            selectedTax = containerMenu.getSelectedTaxDataIntCopy();
-            this.containerChanged();
-        }));
+        this.addRenderableWidget(new SideButton(Items.DIAMOND_PICKAXE.getDefaultInstance(), TaxTypes.MINING_TAX, leftPos - 20, topPos + 5, (context) ->
+                pressedSideButton(TaxTypes.MINING_TAX)));
+        this.addRenderableWidget(new SideButton(Items.FURNACE.getDefaultInstance(), TaxTypes.SMELTING_TAX, leftPos - 20, topPos + 5 + 20, (context) ->
+                pressedSideButton(TaxTypes.SMELTING_TAX)));
+        this.addRenderableWidget(new SideButton(Items.EMERALD.getDefaultInstance(), TaxTypes.TRADING_TAX, leftPos - 20, topPos + 5 + 40, (context) ->
+                pressedSideButton(TaxTypes.TRADING_TAX)));
+    }
+
+    private void pressedSideButton(TaxTypes taxType) {
+        PacketDistributor.sendToServer(new SetSelectedTaxData(taxType));
+        containerMenu.setSelectedTaxType(taxType);
+
+        selectedTax = containerMenu.getSelectedTaxDataIntCopy();
+        this.containerChanged();
     }
 
     @Override
