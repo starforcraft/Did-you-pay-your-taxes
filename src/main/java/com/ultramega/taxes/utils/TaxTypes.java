@@ -1,4 +1,4 @@
-package com.ultramega.taxes;
+package com.ultramega.taxes.utils;
 
 import net.minecraft.network.chat.Component;
 

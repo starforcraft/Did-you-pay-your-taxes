@@ -1,6 +1,6 @@
 package com.ultramega.taxes.container;
 
-import com.ultramega.taxes.TaxTypes;
+import com.ultramega.taxes.utils.TaxTypes;
 import com.ultramega.taxes.network.SyncTaxData;
 import com.ultramega.taxes.registry.ModAttachments;
 import com.ultramega.taxes.registry.ModMenuTypes;
@@ -126,7 +126,9 @@ public class TaxContainerMenu extends AbstractContainerMenu {
     }
 
     private void updateAttachments() {
-        PacketDistributor.sendToServer(new SyncTaxData(getSelectedTaxData(), selectedTaxType));
+        if (player.level().isClientSide) {
+            PacketDistributor.sendToServer(new SyncTaxData(getSelectedTaxData(), selectedTaxType));
+        }
         if (player instanceof ServerPlayer serverPlayer) {
             PacketDistributor.sendToPlayer(serverPlayer, new SyncTaxData(getSelectedTaxData(), selectedTaxType));
         }
@@ -180,7 +182,7 @@ public class TaxContainerMenu extends AbstractContainerMenu {
             this.clearContainer(player, container);
         }
 
-        super.slotsChanged(container);
+        //super.slotsChanged(container);
     }
 
     private LinkedHashMap<String, Integer> transformTax(LinkedHashMap<String, Double> tax) {

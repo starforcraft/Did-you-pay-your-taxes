@@ -1,12 +1,13 @@
 package com.ultramega.taxes.events;
 
-import com.ultramega.taxes.TaxTypes;
+import com.ultramega.taxes.Config;
 import com.ultramega.taxes.Taxes;
 import com.ultramega.taxes.entities.IRSEntity;
 import com.ultramega.taxes.network.AddTaxData;
 import com.ultramega.taxes.network.SyncIntTaxData;
 import com.ultramega.taxes.registry.ModAttachments;
 import com.ultramega.taxes.registry.ModEntityTypes;
+import com.ultramega.taxes.utils.TaxTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerLevel;
@@ -15,6 +16,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.Vec3;
@@ -53,7 +55,9 @@ public class TaxEvent {
         Player player = event.getEntity();
         ItemStack itemStack = event.getSmelting();
 
-        sendTax(player, itemStack.getItem(), itemStack.getCount(), TaxTypes.SMELTING_TAX);
+        if (!itemStack.isEmpty()) {
+            sendTax(player, itemStack.getItem(), itemStack.getCount(), TaxTypes.SMELTING_TAX);
+        }
     }
 
     @SubscribeEvent
@@ -61,7 +65,9 @@ public class TaxEvent {
         Player player = event.getEntity();
         ItemStack itemStack = event.getMerchantOffer().getResult();
 
-        sendTax(player, itemStack.getItem(), itemStack.getCount(), TaxTypes.TRADING_TAX);
+        if (!itemStack.isEmpty()) {
+            sendTax(player, itemStack.getItem(), itemStack.getCount(), TaxTypes.TRADING_TAX);
+        }
     }
 
     @SubscribeEvent
@@ -75,19 +81,21 @@ public class TaxEvent {
             daysUntilTaxPayDay--;
 
             if (daysUntilTaxPayDay == 0) {
-                daysUntilTaxPayDay = 30;
+                daysUntilTaxPayDay = Config.taxPayoutDays;
 
                 int taxRate = player.getData(ModAttachments.TAX_RATE.get());
-                player.setData(ModAttachments.TAX_RATE.get(), Math.min(42, taxRate + 1));
+                player.setData(ModAttachments.TAX_RATE.get(), Math.min(Config.maxTaxRate, taxRate + 1));
 
-                LinkedHashMap<String, Double> miningTax = player.getData(ModAttachments.MINING_TAX.get());
-                LinkedHashMap<String, Double> smeltingTax = player.getData(ModAttachments.SMELTING_TAX.get());
-                LinkedHashMap<String, Double> tradingTax = player.getData(ModAttachments.TRADING_TAX.get());
+                if (Config.spawnIRS) {
+                    LinkedHashMap<String, Double> miningTax = player.getData(ModAttachments.MINING_TAX.get());
+                    LinkedHashMap<String, Double> smeltingTax = player.getData(ModAttachments.SMELTING_TAX.get());
+                    LinkedHashMap<String, Double> tradingTax = player.getData(ModAttachments.TRADING_TAX.get());
 
-                boolean hasPaidAllTaxes = areAllTaxesPaid(miningTax) && areAllTaxesPaid(smeltingTax) && areAllTaxesPaid(tradingTax);
+                    boolean hasPaidAllTaxes = areAllTaxesPaid(miningTax) && areAllTaxesPaid(smeltingTax) && areAllTaxesPaid(tradingTax);
 
-                if (!level.isClientSide && !hasPaidAllTaxes) {
-                    spawnEnemyWave(level, player.blockPosition(), taxRate);
+                    if (!level.isClientSide && !hasPaidAllTaxes) {
+                        spawnEnemyWave(level, player.blockPosition(), taxRate);
+                    }
                 }
             }
 
@@ -115,12 +123,13 @@ public class TaxEvent {
             double angle = angleCount * (i + 1);
             double x = radius * Math.sin(angle);
             double z = radius * Math.cos(angle);
+            double y = level.getHeight(Heightmap.Types.MOTION_BLOCKING, playerPos.getX() + (int)x, playerPos.getZ() + (int)z);
 
             IRSEntity entity = new IRSEntity(ModEntityTypes.IRS_ENTITY.get(), level);
             if (taxRate > 20) {
                 entity.allowSpawningAirstrike();
             }
-            entity.setPos(playerPos.getX() + x, playerPos.getY(), playerPos.getZ() + z);
+            entity.setPos(playerPos.getX() + x, y, playerPos.getZ() + z);
             entity.setAttackPlayer(true);
             level.addFreshEntity(entity);
         }
@@ -130,7 +139,9 @@ public class TaxEvent {
         int taxRate = player.getData(ModAttachments.TAX_RATE.get());
         String itemId = BuiltInRegistries.ITEM.getKey(item).toString();
 
-        PacketDistributor.sendToServer(new AddTaxData(itemId, amount, taxRate, taxType));
+        if (player.level().isClientSide) {
+            PacketDistributor.sendToServer(new AddTaxData(itemId, amount, taxRate, taxType));
+        }
         if (player instanceof ServerPlayer serverPlayer) {
             PacketDistributor.sendToPlayer(serverPlayer, new AddTaxData(itemId, amount, taxRate, taxType));
         }

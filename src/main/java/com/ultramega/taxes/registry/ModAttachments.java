@@ -1,6 +1,7 @@
 package com.ultramega.taxes.registry;
 
 import com.mojang.serialization.Codec;
+import com.ultramega.taxes.Config;
 import com.ultramega.taxes.Taxes;
 import com.ultramega.taxes.utils.ModCodecs;
 import net.neoforged.neoforge.attachment.AttachmentType;
@@ -14,10 +15,10 @@ public class ModAttachments {
     public static final DeferredRegister<AttachmentType<?>> ATTACHMENT_TYPES = DeferredRegister.create(NeoForgeRegistries.ATTACHMENT_TYPES, Taxes.MODID);
 
     public static final Supplier<AttachmentType<Integer>> TAX_DAYS_LEFT = ATTACHMENT_TYPES.register(
-            "tax_days_left", () -> AttachmentType.builder(() -> 30).serialize(Codec.INT).copyOnDeath().build()
+            "tax_days_left", () -> AttachmentType.builder(() -> Config.taxPayoutDays).serialize(Codec.INT).copyOnDeath().build()
     );
     public static final Supplier<AttachmentType<Integer>> TAX_RATE = ATTACHMENT_TYPES.register(
-            "tax_rate", () -> AttachmentType.builder(() -> 10).serialize(Codec.INT).copyOnDeath().build()
+            "tax_rate", () -> AttachmentType.builder(() -> Config.minTaxRate).serialize(Codec.INT).copyOnDeath().build()
     );
 
     public static final Supplier<AttachmentType<LinkedHashMap<String, Double>>> MINING_TAX = ATTACHMENT_TYPES.register(

@@ -6,7 +6,9 @@ import com.ultramega.taxes.entities.RocketRenderer;
 import com.ultramega.taxes.gui.TaxScreen;
 import com.ultramega.taxes.registry.*;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 
@@ -14,7 +16,9 @@ import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 public class Taxes {
     public static final String MODID = "taxes";
 
-    public Taxes(IEventBus modEventBus) {
+    public Taxes(IEventBus modEventBus, ModContainer modContainer) {
+        modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
+
         ModBlocks.BLOCKS.register(modEventBus);
         ModItems.ITEMS.register(modEventBus);
         ModCreativeTabs.CREATIVE_MODE_TABS.register(modEventBus);

@@ -1,7 +1,7 @@
 package com.ultramega.taxes.gui;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.ultramega.taxes.TaxTypes;
+import com.ultramega.taxes.utils.TaxTypes;
 import com.ultramega.taxes.Taxes;
 import com.ultramega.taxes.container.TaxContainerMenu;
 import com.ultramega.taxes.network.SetSelectedTaxData;

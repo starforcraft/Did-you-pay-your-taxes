@@ -1,6 +1,6 @@
 package com.ultramega.taxes.network;
 
-import com.ultramega.taxes.TaxTypes;
+import com.ultramega.taxes.utils.TaxTypes;
 import com.ultramega.taxes.registry.ModAttachments;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.neoforge.attachment.AttachmentType;

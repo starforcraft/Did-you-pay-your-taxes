@@ -1,6 +1,6 @@
 package com.ultramega.taxes.network;
 
-import com.ultramega.taxes.TaxTypes;
+import com.ultramega.taxes.utils.TaxTypes;
 import com.ultramega.taxes.Taxes;
 import com.ultramega.taxes.utils.ModCodecs;
 import net.minecraft.network.RegistryFriendlyByteBuf;

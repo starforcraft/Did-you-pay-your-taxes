@@ -1,6 +1,6 @@
 package com.ultramega.taxes.gui;
 
-import com.ultramega.taxes.TaxTypes;
+import com.ultramega.taxes.utils.TaxTypes;
 import com.ultramega.taxes.Taxes;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
